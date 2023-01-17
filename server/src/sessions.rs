@@ -135,26 +135,23 @@ impl From<(TcpStream, SocketAddr)> for Session {
 
 impl Source for Session {
     fn register(&mut self, registry: &Registry, token: Token, interests: Interest) -> Result<()> {
-        return self
-            .stream
+        self.stream
             .lock()
             .map_err(|_| Error::new(ErrorKind::Other, "Mutex could not be locked"))?
-            .register(registry, token, interests);
+            .register(registry, token, interests)
     }
 
     fn reregister(&mut self, registry: &Registry, token: Token, interests: Interest) -> Result<()> {
-        return self
-            .stream
+        self.stream
             .lock()
             .map_err(|_| Error::new(ErrorKind::Other, "Mutex could not be locked"))?
-            .reregister(registry, token, interests);
+            .reregister(registry, token, interests)
     }
 
     fn deregister(&mut self, registry: &Registry) -> Result<()> {
-        return self
-            .stream
+        self.stream
             .lock()
             .map_err(|_| Error::new(ErrorKind::Other, "Mutex could not be locked"))?
-            .deregister(registry);
+            .deregister(registry)
     }
 }

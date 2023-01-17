@@ -138,7 +138,7 @@ impl Listener {
                     }
                 }
                 Err(err) => {
-                    println!("Failed to poll for events with Error: {}", err);
+                    println!("Failed to poll for events with Error: {err}");
                     return;
                 }
             }

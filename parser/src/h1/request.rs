@@ -84,7 +84,7 @@ impl<'b, 'h> H1Request<'b, 'h> {
 
     // TODO: This may have way too many branches. Control flow looks insane https://godbolt.org/z/jhx8Ga4d3
     fn set_method(&mut self, buf: &mut RawRequest<'b>) -> Result<(), ParseError> {
-        if buf.any(|&b| !(b'A'..=b'Z').contains(&b)) {
+        if buf.any(|&b| !b.is_ascii_uppercase()) {
             if let Ok(slice) = buf.slice_skip(1) {
                 let res = match slice {
                     b"GET" => Ok(HttpMethod::Get),
