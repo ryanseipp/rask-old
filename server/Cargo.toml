@@ -12,3 +12,6 @@ repository.workspace = true
 mio.workspace = true
 slab.workspace = true
 parser.path = "../parser"
+
+[[example]]
+name = "example"

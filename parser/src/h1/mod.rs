@@ -97,7 +97,7 @@ pub fn take_after_newline(buf: &mut RawRequest<'_>) -> Result<(), ParseError> {
                     return Ok(());
                 }
             }
-            None => return Err(ParseError::NewLine),
+            None => return Ok(()),
         }
     }
 }

@@ -45,6 +45,23 @@ pub struct Listener {
 }
 
 impl Listener {
+    /// TODO
+    pub fn new(tx: Vec<Sender<Arc<Session>>>, rx: Vec<Receiver<Arc<Session>>>) -> Self {
+        let mut listener = TcpListener::bind("127.0.0.1:8080".parse().unwrap()).unwrap();
+        let poll = Poll::new().unwrap();
+        poll.registry()
+            .register(&mut listener, LISTENER_TOKEN, Interest::READABLE)
+            .unwrap();
+        Self {
+            inner: listener,
+            num_events: 1024,
+            poll,
+            sessions: Slab::default(),
+            workers_tx: tx,
+            workers_rx: rx,
+        }
+    }
+
     fn accept(&mut self) {
         loop {
             let session = match self.inner.accept().map(Session::from) {

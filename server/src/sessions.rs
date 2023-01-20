@@ -32,9 +32,13 @@ const BUFFER_CAPACITY: usize = 16 * KB;
 #[derive(Debug)]
 pub struct Session {
     stream: Mutex<TcpStream>,
-    read_buffer: Mutex<Buffer>,
+    /// TODO
+    pub read_buffer: Mutex<Buffer>,
     write_buffer: Mutex<Buffer>,
 }
+
+unsafe impl Send for Session {}
+unsafe impl Sync for Session {}
 
 impl Session {
     /// Creates session
@@ -132,6 +136,12 @@ impl From<(TcpStream, SocketAddr)> for Session {
         Self::new(value, BUFFER_CAPACITY, BUFFER_CAPACITY)
     }
 }
+
+// impl Borrow<[u8]> for Session {
+//     fn borrow(&self) -> &[u8] {
+//         self.read_buffer.lock().unwrap().borrow()
+//     }
+// }
 
 impl Source for Session {
     fn register(&mut self, registry: &Registry, token: Token, interests: Interest) -> Result<()> {

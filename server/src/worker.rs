@@ -14,10 +14,15 @@
 
 //! Worker to process HTTP requests
 
-use std::sync::{
-    mpsc::{Receiver, Sender},
-    Arc,
+use std::{
+    sync::{
+        mpsc::{Receiver, Sender},
+        Arc,
+    },
+    thread,
 };
+
+use parser::h1::request::H1Request;
 
 use crate::sessions::Session;
 
@@ -34,13 +39,33 @@ pub struct Worker {
 }
 
 impl Worker {
+    /// TODO
+    pub fn new(rx: Receiver<Arc<Session>>, tx: Sender<Arc<Session>>) -> Self {
+        Self {
+            session_rx: rx,
+            session_tx: tx,
+        }
+    }
+
+    /// TODO
+    pub fn spawn_new_and_run(
+        rx: Receiver<Arc<Session>>,
+        tx: Sender<Arc<Session>>,
+    ) -> thread::JoinHandle<()> {
+        thread::spawn(move || Worker::new(rx, tx).run())
+    }
+
     /// Main event loop for worker
     pub fn run(&mut self) {
         // do we just block on receiving from `session_rx`? Or is there a better way to handle it?
         // TODO: just block for now. May be a better way to handle this when we can profile
-        while let Ok(_session) = self.session_rx.recv() {
+        while let Ok(session) = self.session_rx.recv() {
             // parse bytes in `session.read_buffer`
-            todo!()
+            let buf = session.read_buffer.lock().unwrap().to_owned();
+            let mut request = H1Request::new();
+            request.parse(&buf).unwrap();
+            println!("parsed request: {request:?}");
+            self.session_tx.send(session).unwrap();
         }
     }
 }
