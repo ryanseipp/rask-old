@@ -14,12 +14,9 @@
 
 //! Worker to process HTTP requests
 
-use std::{
-    sync::{
-        mpsc::{Receiver, Sender},
-        Arc,
-    },
-    thread,
+use std::sync::{
+    mpsc::{Receiver, Sender},
+    Arc,
 };
 
 use parser::h1::request::H1Request;
@@ -45,14 +42,6 @@ impl Worker {
             session_rx: rx,
             session_tx: tx,
         }
-    }
-
-    /// TODO
-    pub fn spawn_new_and_run(
-        rx: Receiver<Arc<Session>>,
-        tx: Sender<Arc<Session>>,
-    ) -> thread::JoinHandle<()> {
-        thread::spawn(move || Worker::new(rx, tx).run())
     }
 
     /// Main event loop for worker

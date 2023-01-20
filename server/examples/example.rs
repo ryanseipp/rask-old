@@ -6,9 +6,10 @@ fn main() {
     let (tx, rx) = channel();
     let (r_tx, r_rx) = channel();
     let mut listener = Listener::new(vec![tx], vec![r_rx]);
+    let mut worker = Worker::new(rx, r_tx);
 
     let t1 = thread::spawn(move || listener.run());
-    let t2 = Worker::spawn_new_and_run(rx, r_tx);
+    let t2 = thread::spawn(move || worker.run());
 
     let _ = t1.join();
     let _ = t2.join();
