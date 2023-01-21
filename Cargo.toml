@@ -1,10 +1,5 @@
-[workspace]
-members = [
-    "parser",
-    "server",
-]
-
-[workspace.package]
+[package]
+name = "rask"
 version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
@@ -13,9 +8,12 @@ homepage = "https://github.com/ryanseipp/rask"
 repository = "https://github.com/ryanseipp/rask"
 readme = "README.md"
 
-[workspace.dependencies]
+[dependencies]
 mio = { version = "0.8", features = ["os-poll", "net"] }
 slab = "0.4"
+
+[[example]]
+name = "example"
 
 [profile.release]
 opt-level = 3

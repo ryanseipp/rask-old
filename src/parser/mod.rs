@@ -12,18 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![deny(
-    missing_docs,
-    missing_debug_implementations,
-    rust_2018_idioms,
-    unused_imports,
-    // dead_code
-)]
-// temporary
-#![allow(dead_code)]
-// Disallow warnings in examples.
-#![doc(test(attr(deny(warnings))))]
-
 //! Parser implementations for HTTP
 
 pub mod h1;

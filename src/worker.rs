@@ -19,8 +19,7 @@ use std::sync::{
     Arc,
 };
 
-use parser::h1::request::H1Request;
-
+use crate::parser::h1::request::H1Request;
 use crate::sessions::Session;
 
 // TODO: Need a data structure to manage owned sessions. HTTP requests may arrive in multiple reads
@@ -53,7 +52,7 @@ impl Worker {
             let buf = session.read_buffer.lock().unwrap().to_owned();
             let mut request = H1Request::new();
             request.parse(&buf).unwrap();
-            println!("parsed request: {request:?}");
+            println!("parsed request: {:?}", request);
             self.session_tx.send(session).unwrap();
         }
     }

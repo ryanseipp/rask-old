@@ -16,11 +16,10 @@
 
 use core::str::from_utf8_unchecked;
 
-use crate::raw_request::RawRequest;
-use crate::{HttpMethod, HttpVersion};
-
 use super::tokens::is_request_target_token;
 use super::{take_after_newline, Header, ParseError};
+use crate::parser::raw_request::RawRequest;
+use crate::parser::{HttpMethod, HttpVersion};
 
 // TODO: I don't think we can hold onto &str, as we may receive requests over multiple TCP packets.
 // This would require such a mashup of lifetimes that would be impossible to reason about. How do

@@ -32,5 +32,6 @@
 
 mod buffer;
 pub mod listener;
+pub mod parser;
 pub mod sessions;
 pub mod worker;

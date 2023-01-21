@@ -16,7 +16,7 @@
 
 use core::fmt::Display;
 
-use crate::raw_request::RawRequest;
+use super::raw_request::RawRequest;
 
 pub mod request;
 mod tokens;
