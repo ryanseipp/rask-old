@@ -56,9 +56,9 @@ impl<'b, 'h> H1Request<'b, 'h> {
     ///
     /// # Example
     /// ```
-    /// # use crate::parser::{HttpMethod, HttpVersion};
-    /// # use crate::parser::h1::ParseError;
-    /// # use crate::parser::h1::request::H1Request;
+    /// # use rask::parser::{HttpMethod, HttpVersion};
+    /// # use rask::parser::h1::ParseError;
+    /// # use rask::parser::h1::request::H1Request;
     /// # fn main() -> Result<(), ParseError> {
     /// let mut req = H1Request::new();
     /// req.parse(b"GET / HTTP/1.1\r\n\r\n")?;
