@@ -2,11 +2,13 @@
 name = "rask"
 version = "0.0.1"
 edition = "2021"
-license = "Apache-2.0"
+rust-version = "1.57.0"
 description = "Low-level HTTP for learning purposes"
 homepage = "https://github.com/ryanseipp/rask"
 repository = "https://github.com/ryanseipp/rask"
-readme = "README.md"
+license = "Apache-2.0"
+keywords = ["HTTP", "Server", "Proxy", "H2", "H3"]
+categories = ["web-programming::http-server"]
 
 [dependencies]
 mio = { version = "0.8", features = ["os-poll", "net"] }
