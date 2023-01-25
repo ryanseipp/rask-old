@@ -18,6 +18,7 @@ use core::slice;
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     Skip,
+    Take,
 }
 
 impl Display for Error {
@@ -42,22 +43,35 @@ impl<'a> RawRequest<'a> {
         }
     }
 
+    #[inline]
     pub fn pos(&self) -> usize {
         self.pos
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
+    #[inline]
+    pub fn current(&self) -> Option<u8> {
+        return self
+            .inner
+            .get(if self.pos == 0 { 0 } else { self.pos - 1 })
+            .copied();
+    }
+
+    #[inline]
     pub fn peek(&self) -> Option<u8> {
         return self.inner.get(self.pos).copied();
     }
 
+    #[inline]
     pub fn slice(&mut self) -> &'a [u8] {
         return self.slice_skip(0).expect("slice_skip shall not fail");
     }
 
+    #[inline]
     pub fn slice_skip(&mut self, skip: usize) -> Result<&'a [u8], Error> {
         if skip > self.pos {
             return Err(Error::Skip);
@@ -78,11 +92,35 @@ impl<'a> RawRequest<'a> {
 
         Ok(head)
     }
+
+    #[inline]
+    pub fn take_until<F>(&mut self, mut predicate: F) -> Option<&'a [u8]>
+    where
+        F: FnMut(u8) -> bool,
+    {
+        loop {
+            if let Some(b) = self.peek() {
+                if predicate(b) {
+                    let slice = self.slice();
+                    if slice.is_empty() {
+                        return None;
+                    } else {
+                        return Some(slice);
+                    }
+                }
+                self.next();
+            } else {
+                self.slice();
+                return None;
+            }
+        }
+    }
 }
 
 impl<'a> Iterator for RawRequest<'a> {
     type Item = &'a u8;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let result = self.inner.get(self.pos);
         if result.is_some() {

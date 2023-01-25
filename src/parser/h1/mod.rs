@@ -36,6 +36,8 @@ pub enum ParseError {
     HeaderValue,
     /// Invalid or missing new line.
     NewLine,
+    /// Invalid whitespace
+    Whitespace,
 }
 
 impl ParseError {
@@ -47,6 +49,7 @@ impl ParseError {
             ParseError::HeaderName => "Invalid token in header name",
             ParseError::HeaderValue => "Invalid token in header value",
             ParseError::NewLine => "Invalid or missing new line",
+            ParseError::Whitespace => "Invalid whitespace",
         }
     }
 }
@@ -59,52 +62,64 @@ impl Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-/// Finds offset of next non-whitespace character.
-///
-/// In RFC 9112 Section 3, this is defined as any SP, HTAB, VT, FF, or CR without LF.
-pub fn get_non_whitespace_pos(buf: &[u8], start: usize) -> Option<usize> {
-    let mut buf_iter = buf.iter().skip(start).peekable();
-    let mut pos = start;
+/// Result whose Err variant is `ParseError`
+pub type ParseResult<T> = std::result::Result<T, ParseError>;
 
-    loop {
-        if let Some(&b) = buf_iter.next() {
-            pos += 1;
+/// Consumes whitespace characters from `buf`.
+/// Whitespace is defined by RFC 9110 Secion 5.6.3 by ABNF
+/// ```abnf
+/// OWS = *( SP / HTAB )
+/// ```
+#[inline]
+pub fn discard_whitespace(buf: &mut RawRequest<'_>) {
+    buf.take_until(|b| b != b' ' && b != b'\t');
+}
 
-            if b == b'\r' {
-                // b"\r\n" is considered newline, and not whitespace
-                if buf_iter.peek() == Some(&&b'\n') {
-                    return Some(pos - 1);
-                }
-            }
+/// TODO
+#[inline]
+pub fn skip_whitespace(buf: &mut RawRequest<'_>) {
+    buf.find(|&&b| b != b' ' && b != b'\t');
+}
 
-            if b != b' ' && b != b'\t' && !(b >= 0x11 && b <= b'\r') {
-                return Some(pos);
-            }
-        } else {
-            return None;
-        }
+/// Consumes whitespace characters from `buf`. Requires that at least one whitespace character is
+/// encountered.
+/// Whitespace is defined by RFC 9110 Secion 5.6.3 by ABNF
+/// ```abnf
+/// RWS = 1*( SP / HTAB )
+/// ```
+#[inline]
+pub fn discard_required_whitespace(buf: &mut RawRequest<'_>) -> ParseResult<()> {
+    let pos = buf.pos();
+
+    buf.take_until(|b| b != b' ' && b != b'\t');
+    if pos == buf.pos() {
+        return Err(ParseError::Whitespace);
     }
+
+    Ok(())
 }
 
 /// Consumes `buf` to the end of a new-line character sequence `b"\r\n"`
-pub fn take_after_newline(buf: &mut RawRequest<'_>) -> Result<(), ParseError> {
+#[inline]
+pub fn discard_newline(buf: &mut RawRequest<'_>) {
     loop {
-        match buf.next() {
-            Some(&b) => {
-                if b == b'\r' && buf.peek() == Some(b'\n') {
-                    // trim the buffer, effectively discarding everything we iterated over
-                    buf.slice();
-                    return Ok(());
-                }
-            }
-            None => return Ok(()),
+        buf.take_until(|b| b == b'\r');
+        buf.next();
+        if buf.next() == Some(&b'\n') {
+            buf.slice();
+            return;
         }
     }
 }
 
-/// TODO!
-#[derive(Debug)]
-pub struct Header<'a> {
-    name: &'a str,
-    value: &'a [u8],
+/// TODO
+#[inline]
+pub fn skip_newline(buf: &mut RawRequest<'_>) {
+    loop {
+        buf.find(|&&b| b == b'\r');
+        if buf.next() == Some(&b'\n') {
+            println!("{}", buf.pos());
+            return;
+        }
+    }
 }

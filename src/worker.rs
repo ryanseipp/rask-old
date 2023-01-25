@@ -52,7 +52,7 @@ impl Worker {
             let buf = session.read_buffer.lock().unwrap().to_owned();
             let mut request = H1Request::new();
             request.parse(&buf).unwrap();
-            println!("parsed request: {:?}", request);
+            println!("{}", request);
             self.session_tx.send(session).unwrap();
         }
     }

@@ -14,6 +14,8 @@
 
 //! Parser implementations for HTTP
 
+use std::fmt::Display;
+
 pub mod h1;
 mod raw_request;
 
@@ -43,6 +45,21 @@ pub enum HttpMethod {
     Trace,
 }
 
+impl Display for HttpMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Get => "GET",
+            Self::Head => "HEAD",
+            Self::Post => "POST",
+            Self::Put => "PUT",
+            Self::Delete => "DELETE",
+            Self::Connect => "CONNECT",
+            Self::Options => "OPTIONS",
+            Self::Trace => "TRACE",
+        })
+    }
+}
+
 /// Representation of the requested HTTP version
 #[derive(Debug, PartialEq, Eq)]
 pub enum HttpVersion {
@@ -54,4 +71,15 @@ pub enum HttpVersion {
     H2,
     /// HTTP/3
     H3,
+}
+
+impl Display for HttpVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::H1_0 => "HTTP/1.0",
+            Self::H1_1 => "HTTP/1.1",
+            Self::H2 => "HTTP/2",
+            Self::H3 => "HTTP/3",
+        })
+    }
 }

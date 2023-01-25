@@ -17,6 +17,9 @@ slab = "0.4"
 [[example]]
 name = "example"
 
+[[example]]
+name = "example_client"
+
 [[bench]]
 name = "parser"
 harness = false
