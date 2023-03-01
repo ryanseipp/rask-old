@@ -137,12 +137,6 @@ impl From<(TcpStream, SocketAddr)> for Session {
     }
 }
 
-// impl Borrow<[u8]> for Session {
-//     fn borrow(&self) -> &[u8] {
-//         self.read_buffer.lock().unwrap().borrow()
-//     }
-// }
-
 impl Source for Session {
     fn register(&mut self, registry: &Registry, token: Token, interests: Interest) -> Result<()> {
         self.stream

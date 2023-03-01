@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Raw Request iterator
 use core::fmt::Display;
 use core::slice;
 
+/// TODO
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    ///
     Skip,
+    ///
     Take,
 }
 
@@ -29,13 +33,16 @@ impl Display for Error {
 
 impl std::error::Error for Error {}
 
-#[derive(Debug)]
+/// TODO
+#[derive(Debug, Clone)]
 pub struct RawRequest<'a> {
     inner: &'a [u8],
     pos: usize,
 }
 
+/// TODO
 impl<'a> RawRequest<'a> {
+    /// TODO
     pub fn new(slice: &'a [u8]) -> Self {
         RawRequest {
             inner: slice,
@@ -43,16 +50,25 @@ impl<'a> RawRequest<'a> {
         }
     }
 
+    /// TODO
     #[inline]
     pub fn pos(&self) -> usize {
         self.pos
     }
 
+    /// TODO
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
+    /// TODO
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.pos == self.inner.len()
+    }
+
+    /// TODO
     #[inline]
     pub fn current(&self) -> Option<u8> {
         return self
@@ -61,16 +77,30 @@ impl<'a> RawRequest<'a> {
             .copied();
     }
 
+    ///
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.inner.to_vec()
+    }
+
+    /// TODO
     #[inline]
     pub fn peek(&self) -> Option<u8> {
         return self.inner.get(self.pos).copied();
     }
 
+    /// TODO
+    #[inline]
+    pub fn advance(&mut self, n: usize) {
+        self.pos = self.inner.len().min(self.pos + n);
+    }
+
+    /// TODO
     #[inline]
     pub fn slice(&mut self) -> &'a [u8] {
         return self.slice_skip(0).expect("slice_skip shall not fail");
     }
 
+    /// TODO
     #[inline]
     pub fn slice_skip(&mut self, skip: usize) -> Result<&'a [u8], Error> {
         if skip > self.pos {
@@ -93,26 +123,41 @@ impl<'a> RawRequest<'a> {
         Ok(head)
     }
 
+    /// TODO
     #[inline]
     pub fn take_until<F>(&mut self, mut predicate: F) -> Option<&'a [u8]>
     where
         F: FnMut(u8) -> bool,
     {
         loop {
-            if let Some(b) = self.peek() {
-                if predicate(b) {
+            match self.peek() {
+                Some(b) if predicate(b) => {
                     let slice = self.slice();
-                    if slice.is_empty() {
-                        return None;
-                    } else {
-                        return Some(slice);
-                    }
+                    return if slice.is_empty() { None } else { Some(slice) };
                 }
-                self.next();
-            } else {
-                self.slice();
-                return None;
+                Some(_) => {
+                    self.next();
+                }
+                None => {
+                    self.slice();
+                    // TODO: may be a bug if slice returns non-empty slice
+                    return None;
+                }
             }
+            // if let Some(b) = self.peek() {
+            //     if predicate(b) {
+            //         let slice = self.slice();
+            //         if slice.is_empty() {
+            //             return None;
+            //         } else {
+            //             return Some(slice);
+            //         }
+            //     }
+            //     self.next();
+            // } else {
+            //     self.slice();
+            //     return None;
+            // }
         }
     }
 }
@@ -128,6 +173,25 @@ impl<'a> Iterator for RawRequest<'a> {
         }
 
         result
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len(), Some(self.len()))
+    }
+}
+
+impl<'a> ExactSizeIterator for RawRequest<'a> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+impl<'a> AsRef<[u8]> for RawRequest<'a> {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        &self.inner[self.pos..]
     }
 }
 

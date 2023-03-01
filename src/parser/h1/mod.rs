@@ -14,56 +14,11 @@
 
 //! H1 parser implementation
 
-use core::fmt::Display;
-
-use super::raw_request::RawRequest;
+use super::{raw_request::RawRequest, ParseError, ParseResult};
 
 pub mod request;
-mod tokens;
-
-/// Represents possible failures while parsing
-#[derive(Debug)]
-pub enum ParseError {
-    /// Invalid byte in method.
-    Method,
-    /// Invalid byte in target.
-    Target,
-    /// Invalid HTTP version.
-    Version,
-    /// Invalid byte in header name.
-    HeaderName,
-    /// Invalid byte in header value.
-    HeaderValue,
-    /// Invalid or missing new line.
-    NewLine,
-    /// Invalid whitespace
-    Whitespace,
-}
-
-impl ParseError {
-    fn description_str(&self) -> &'static str {
-        match *self {
-            ParseError::Method => "Invalid token in method",
-            ParseError::Target => "Invalid token in target",
-            ParseError::Version => "Invalid version",
-            ParseError::HeaderName => "Invalid token in header name",
-            ParseError::HeaderValue => "Invalid token in header value",
-            ParseError::NewLine => "Invalid or missing new line",
-            ParseError::Whitespace => "Invalid whitespace",
-        }
-    }
-}
-
-impl Display for ParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.description_str())
-    }
-}
-
-impl std::error::Error for ParseError {}
-
-/// Result whose Err variant is `ParseError`
-pub type ParseResult<T> = std::result::Result<T, ParseError>;
+pub mod response;
+pub mod tokens;
 
 /// Consumes whitespace characters from `buf`.
 /// Whitespace is defined by RFC 9110 Secion 5.6.3 by ABNF

@@ -17,69 +17,58 @@
 use std::fmt::Display;
 
 pub mod h1;
-mod raw_request;
+pub mod method;
+pub mod raw_request;
+pub mod status;
+pub mod version;
+
+pub use method::Method;
+pub use version::Version;
 
 // TODO: What goes here?
 /// Parser trait
 pub trait Parser {}
 
-/// Representation of the requested HTTP Method
-/// [IETF RFC 9110 Section 9](https://www.rfc-editor.org/rfc/rfc9110#section-9)
+/// Represents possible failures while parsing
 #[derive(Debug, PartialEq, Eq)]
-pub enum HttpMethod {
-    /// RFC 9110 9.3.1
-    Get,
-    /// RFC 9110 9.3.2
-    Head,
-    /// RFC 9110 9.3.3
-    Post,
-    /// RFC 9110 9.3.4
-    Put,
-    /// RFC 9110 9.3.5
-    Delete,
-    /// RFC 9110 9.3.6
-    Connect,
-    /// RFC 9110 9.3.7
-    Options,
-    /// RFC 9110 9.3.8
-    Trace,
+pub enum ParseError {
+    /// Invalid byte in method.
+    Method,
+    /// Invalid byte in target.
+    Target,
+    /// Invalid HTTP version.
+    Version,
+    /// Invalid byte in header name.
+    HeaderName,
+    /// Invalid byte in header value.
+    HeaderValue,
+    /// Invalid or missing new line.
+    NewLine,
+    /// Invalid whitespace
+    Whitespace,
 }
 
-impl Display for HttpMethod {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::Get => "GET",
-            Self::Head => "HEAD",
-            Self::Post => "POST",
-            Self::Put => "PUT",
-            Self::Delete => "DELETE",
-            Self::Connect => "CONNECT",
-            Self::Options => "OPTIONS",
-            Self::Trace => "TRACE",
-        })
+impl ParseError {
+    fn description_str(&self) -> &'static str {
+        match *self {
+            ParseError::Method => "Invalid token in method",
+            ParseError::Target => "Invalid token in target",
+            ParseError::Version => "Invalid version",
+            ParseError::HeaderName => "Invalid token in header name",
+            ParseError::HeaderValue => "Invalid token in header value",
+            ParseError::NewLine => "Invalid or missing new line",
+            ParseError::Whitespace => "Invalid whitespace",
+        }
     }
 }
 
-/// Representation of the requested HTTP version
-#[derive(Debug, PartialEq, Eq)]
-pub enum HttpVersion {
-    /// HTTP/1.0
-    H1_0,
-    /// HTTP/1.1
-    H1_1,
-    /// HTTP/2
-    H2,
-    /// HTTP/3
-    H3,
-}
-
-impl Display for HttpVersion {
+impl Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::H1_0 => "HTTP/1.0",
-            Self::H1_1 => "HTTP/1.1",
-            Self::H2 => "HTTP/2",
-            Self::H3 => "HTTP/3",
-        })
+        f.write_str(self.description_str())
     }
 }
+
+impl std::error::Error for ParseError {}
+
+/// Result whose Err variant is `ParseError`
+pub type ParseResult<T> = std::result::Result<T, ParseError>;

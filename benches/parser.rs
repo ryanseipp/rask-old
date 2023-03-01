@@ -1,21 +1,74 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rask::parser::h1::request::H1Request;
 
-fn benchmark(c: &mut Criterion) {
-    let input: &[u8] = b"GET /api/v1.0/weather/forecast HTTP/1.1\r\nHost: www.example.org\r\n\r\n";
-    let input_long: &[u8] = b"GET /api/v1.0/weather/forecast HTTP/1.1\r\nAccept:*/*\r\nAccept-Encoding:gzip,deflate,br\r\nAccept-Language:en-US,en;q=0.5\r\nCache-Control:no-cache\r\nConnection:keep-alive\r\nDNT:1\r\nHost: www.example.org\r\nPragma:no-cache\r\nReferrer:https://www.example.org\r\nSec-Fetch-Dest:empty\r\nSec-Fetch-Mode:cors\r\nSec-Fetch-Site:same-origin\r\nUser-Agent:Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0\r\n";
+const REQ: &[u8] = b"\
+GET /api/v1.0/weather/forecast HTTP/1.1\r\n\
+Host: www.example.org\r\n\r\n";
 
-    let input_longer: &[u8] = b"POST /log?format=json&hasfast=true HTTP/3\r\nHost: play.google.com\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0\r\nAccept: */*\r\nAccept-Language: en-US,en;q=0.5\r\nAccept-Encoding: gzip, deflate, br\r\nReferer: https://www.google.com/\r\nContent-Type: application/x-www-form-urlencoded;charset=utf-8\r\nContent-Length: 669\r\nOrigin: https://www.google.com\r\nDNT: 1\r\nConnection: keep-alive\r\nCookie: 1P_JAR=2023-01-24-14; AEC=ARSKqsJBkGg7byaK-h9Pg8UFqNa_tQWYQoxoYyziDbv4vMk5090aYJFoxSc; NID=511=S4cpsYC3bZaeO8vaqNVlIGUx5wBnFk4p_492D3aw8mqT-x5VVn7d3W_BypUHVO83MBi9c_9DaG2Oj3zkgKJ7fYhgGOZ5wT5PLhaZVZhcshiEK1W0EENABLpYPeE-ts09STmkHKlhACGMxYwYXHeVHxfMKRBjS5lABOvDDTggjyg; OGPC=19027681-1:; ANID=AHWqTUnwDcnsbvsZ3b7zB5etOr6vhiYiypkD5MdfeBpk2xk38RVfqbUtklKUT8qp; OGP=-19027681:\r\nSec-Fetch-Dest: empty\r\nSec-Fetch-Mode: cors\r\nSec-Fetch-Site: same-site\r\nPragma: no-cache\r\nCache-Control: no-cache\r\nTE: trailers\r\n\r\n";
+const REQ_MED: &[u8] = b"\
+GET /api/v1.0/weather/forecast HTTP/1.1\r\n\
+Accept:*/*\r\n\
+Accept-Encoding:gzip,deflate,br\r\n\
+Accept-Language:en-US,en;q=0.5\r\n\
+Cache-Control:no-cache\r\n\
+Connection:keep-alive\r\n\
+DNT:1\r\n\
+Host: www.example.org\r\n\
+Pragma:no-cache\r\n\
+Referrer:https://www.example.org\r\n\
+Sec-Fetch-Dest:empty\r\n\
+Sec-Fetch-Mode:cors\r\n\
+Sec-Fetch-Site:same-origin\r\n\
+User-Agent:Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0\r\n\r\n";
+
+const REQ_LONG: &[u8] = b"POST /log?format=json&hasfast=true HTTP/3\r\n\
+Host: play.google.com\r\n\
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0\r\n\
+Accept: */*\r\n\
+Accept-Language: en-US,en;q=0.5\r\n\
+Accept-Encoding: gzip, deflate, br\r\n\
+Referer: https://www.google.com/\r\n\
+Content-Type: application/x-www-form-urlencoded;charset=utf-8\r\n\
+Content-Length: 669\r\n\
+Origin: https://www.google.com\r\n\
+DNT: 1\r\n\
+Connection: keep-alive\r\n\
+Cookie: 1P_JAR=2023-01-24-14; AEC=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; NID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; OGPC=xxxxxxxxxxx; ANID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; OGP=xxxxxxxxxx\r\n\
+Sec-Fetch-Dest: empty\r\n\
+Sec-Fetch-Mode: cors\r\n\
+Sec-Fetch-Site: same-site\r\n\
+Pragma: no-cache\r\n\
+Cache-Control: no-cache\r\n\
+TE: trailers\r\n\r\n";
+
+const REQ_COMP: &[u8] = b"\
+GET /wp-content/uploads/2010/03/darth-vader-jedi-battle-lightsaber.jpg HTTP/1.1\r\n\
+Host: www.example.org\r\n\
+User-Agent: Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; ja-JP-mac; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3 Pathtraq/0.9\r\n\
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n\
+Accept-Language: ja,en-us;q=0.7,en;q=0.3\r\n\
+Accept-Encoding: gzip,deflate\r\n\
+Accept-Charset: Shift_JIS,utf-8;q=0.7,*;q=0.7\r\n\
+Keep-Alive: 115\r\n\
+Connection: keep-alive\r\n\
+Cookie: wp_ozh_wsa_visits=2; wp_ozh_wsa_visit_lasttime=xxxxxxxxxx; __utma=xxxxxxxxx.xxxxxxxxxx.xxxxxxxxxx.xxxxxxxxxx.xxxxxxxxxx.x; __utmz=xxxxxxxxx.xxxxxxxxxx.x.x.utmccn=(referral)|utmcsr=reader.livedoor.com|utmcct=/reader/|utmcmd=referral|padding=under256\r\n\r\n";
+
+fn benchmark(c: &mut Criterion) {
+    let inputs = [REQ, REQ_MED, REQ_COMP, REQ_LONG];
 
     let mut group = c.benchmark_group("parse");
-    for &input in [input, input_long, input_longer].iter() {
+    for &input in inputs.iter() {
         group.throughput(Throughput::Bytes(input.len() as u64));
-        group.bench_with_input(BenchmarkId::from_parameter(input.len()), input, |b, i| {
-            b.iter(|| {
-                let mut req = H1Request::new();
-                let _ = req.parse(i);
-            })
-        });
+        group.bench_with_input(
+            BenchmarkId::new("all", input.len() as u64),
+            input,
+            |b, i| {
+                b.iter(|| {
+                    let mut req = H1Request::new();
+                    let _ = req.parse(i);
+                })
+            },
+        );
     }
     group.finish();
 }
