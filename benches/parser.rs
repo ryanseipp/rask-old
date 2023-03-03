@@ -21,7 +21,7 @@ Sec-Fetch-Mode:cors\r\n\
 Sec-Fetch-Site:same-origin\r\n\
 User-Agent:Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0\r\n\r\n";
 
-const REQ_LONG: &[u8] = b"POST /log?format=json&hasfast=true HTTP/3\r\n\
+const REQ_LONG: &[u8] = b"POST /log?format=json&hasfast=true HTTP/1.1\r\n\
 Host: play.google.com\r\n\
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0\r\n\
 Accept: */*\r\n\
