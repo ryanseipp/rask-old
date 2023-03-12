@@ -279,7 +279,12 @@ fn parse_target_vectorized_ssse3(buf: &mut RawRequest<'_>) -> bool {
 
 #[inline]
 fn parse_target<'b>(buf: &mut RawRequest<'b>) -> ParseResult<&'b str> {
+    #[cfg(all(
+        any(target_feature = "avx2", target_feature = "ssse3"),
+        any(target_arch = "x86", target_arch = "x86_64")
+    ))]
     let mut found = false;
+
     #[cfg(all(
         target_feature = "avx2",
         any(target_arch = "x86", target_arch = "x86_64")
@@ -515,7 +520,18 @@ fn validate_header_value_ssse3(buf: &mut RawRequest<'_>) -> bool {
 
 #[inline]
 fn get_header_name<'b>(buf: &mut RawRequest<'b>) -> Option<&'b [u8]> {
+    #[cfg(all(
+        any(target_feature = "avx2", target_feature = "ssse3"),
+        any(target_arch = "x86", target_arch = "x86_64")
+    ))]
     let mut found = false;
+
+    #[cfg(not(all(
+        any(target_feature = "avx2", target_feature = "ssse3"),
+        any(target_arch = "x86", target_arch = "x86_64")
+    )))]
+    let found = false;
+
     #[cfg(all(
         target_feature = "avx2",
         any(target_arch = "x86", target_arch = "x86_64")
@@ -541,7 +557,18 @@ fn get_header_name<'b>(buf: &mut RawRequest<'b>) -> Option<&'b [u8]> {
 
 #[inline]
 fn get_header_value<'b>(buf: &mut RawRequest<'b>) -> Option<&'b [u8]> {
+    #[cfg(all(
+        any(target_feature = "avx2", target_feature = "ssse3"),
+        any(target_arch = "x86", target_arch = "x86_64")
+    ))]
     let mut found = false;
+
+    #[cfg(not(all(
+        any(target_feature = "avx2", target_feature = "ssse3"),
+        any(target_arch = "x86", target_arch = "x86_64")
+    )))]
+    let found = false;
+
     #[cfg(all(
         target_feature = "avx2",
         any(target_arch = "x86", target_arch = "x86_64")
