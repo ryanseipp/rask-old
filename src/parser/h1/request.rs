@@ -76,8 +76,9 @@ impl<'b> H1Request<'b> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn parse(&mut self, buf: &'b [u8]) -> ParseResult<()> {
+    pub fn parse(&mut self, buf: &'b [u8]) -> ParseResult<usize> {
         let mut req = RawRequest::new(buf);
+        let start_len = req.len();
         self.method = Some(parse_method(&mut req)?);
         discard_whitespace(&mut req);
         self.target = Some(parse_target(&mut req)?);
@@ -101,7 +102,7 @@ impl<'b> H1Request<'b> {
             }?;
         }
 
-        Ok(())
+        Ok(start_len - req.len())
     }
 }
 

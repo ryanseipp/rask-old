@@ -34,7 +34,8 @@ pub struct Session {
     stream: Mutex<TcpStream>,
     /// TODO
     pub read_buffer: Mutex<Buffer>,
-    write_buffer: Mutex<Buffer>,
+    /// TODO
+    pub write_buffer: Mutex<Buffer>,
 }
 
 unsafe impl Send for Session {}
@@ -98,7 +99,7 @@ impl Session {
     pub fn flush(&self) -> Result<usize> {
         let mut flushed = 0;
         if let (Ok(mut stream), Ok(mut write_buffer)) =
-            (self.stream.lock(), self.read_buffer.lock())
+            (self.stream.lock(), self.write_buffer.lock())
         {
             while write_buffer.remaining() > 0 {
                 match stream.write(&write_buffer) {

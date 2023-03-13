@@ -15,6 +15,7 @@
 use std::{
     alloc::{self, Layout},
     borrow::{Borrow, BorrowMut},
+    io::Write,
     marker::PhantomData,
     ops::{Deref, DerefMut},
     ptr::{copy, copy_nonoverlapping, NonNull},
@@ -60,6 +61,11 @@ impl Buffer {
     /// Determines the capacity available for writing
     pub fn remaining_mut(&self) -> usize {
         self.cap - self.write_offset
+    }
+
+    /// The current write position
+    pub fn write_pos(&self) -> usize {
+        self.write_offset
     }
 
     /// Gets the current read position as a pointer. Use `remaining` to obtain the length
@@ -237,5 +243,20 @@ impl Deref for Buffer {
 impl DerefMut for Buffer {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.borrow_mut()
+    }
+}
+
+impl Write for Buffer {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if self.remaining_mut() < buf.len() {
+            self.reserve(buf.len());
+        }
+        self.deref_mut()[0..buf.len()].clone_from_slice(buf);
+        self.mark_written(buf.len());
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }

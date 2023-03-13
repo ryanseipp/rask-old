@@ -1,10 +1,12 @@
 //! Http Status Codes
 //! [RFC 9110 Section 15](https://www.rfc-editor.org/rfc/rfc9110#section-15)
 
+use std::fmt::Display;
+
 /// Http Status Codes
 /// [RFC 9110 Section 15](https://www.rfc-editor.org/rfc/rfc9110#section-15)
 #[repr(u16)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Status {
     /// 15.2.1
     Continue = 100,
@@ -94,4 +96,10 @@ pub enum Status {
     GatewayTimeout = 504,
     /// 15.6.6
     HTTPVersionNotSupported = 505,
+}
+
+impl Display for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", *self as u16))
+    }
 }

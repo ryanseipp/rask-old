@@ -19,7 +19,11 @@ use std::sync::{
     Arc,
 };
 
-use crate::parser::h1::request::H1Request;
+use crate::parser::{
+    h1::{request::H1Request, response::Response},
+    status::Status,
+    Version,
+};
 use crate::sessions::Session;
 
 // TODO: Need a data structure to manage owned sessions. HTTP requests may arrive in multiple reads
@@ -49,10 +53,35 @@ impl Worker {
         // TODO: just block for now. May be a better way to handle this when we can profile
         while let Ok(session) = self.session_rx.recv() {
             // parse bytes in `session.read_buffer`
-            let buf = session.read_buffer.lock().unwrap().to_owned();
+            let mut read_buf = session.read_buffer.lock().unwrap();
             let mut request = H1Request::new();
-            request.parse(&buf).unwrap();
-            println!("{}", request);
+
+            let response = match request.parse(&read_buf) {
+                Ok(read) => {
+                    read_buf.mark_read(read);
+                    drop(read_buf);
+                    Response::new_with_status_line(Version::H1_1, Status::Ok)
+                }
+                Err(_) => {
+                    drop(read_buf);
+                    Response::new_with_status_line(Version::H1_1, Status::BadRequest)
+                }
+            };
+
+            let mut write_buf = session.write_buffer.lock().unwrap();
+            let result = response.write_to_buf(&mut write_buf);
+            drop(write_buf);
+
+            if let Ok(written) = result {
+                let mut flushed = 0;
+                while let Ok(n) = session.flush() {
+                    flushed += n;
+                    if flushed == written {
+                        break;
+                    }
+                }
+            }
+
             self.session_tx.send(session).unwrap();
         }
     }
