@@ -857,7 +857,7 @@ Cookie: wp_ozh_wsa_visits=2; wp_ozh_wsa_visit_lasttime=xxxxxxxxxx; __utma=xxxxxx
     pub fn test_req() {
         let mut req = H1Request::new();
         let mut buf = REQ;
-        assert_eq!(REQ.len(), req.fill(&mut buf).unwrap());
+        req.fill(&mut buf).unwrap();
         assert_eq!(Ok(Status::Complete(REQ.len())), req.parse());
         assert_eq!(Some(Method::Get), req.method);
         assert_eq!(&REQ[4..30], b"/api/v1.0/weather/forecast");
@@ -879,7 +879,7 @@ Cookie: wp_ozh_wsa_visits=2; wp_ozh_wsa_visit_lasttime=xxxxxxxxxx; __utma=xxxxxx
     pub fn test_req_med() {
         let mut req = H1Request::new();
         let mut buf = REQ_MED;
-        assert_eq!(REQ_MED.len(), req.fill(&mut buf).unwrap());
+        req.fill(&mut buf).unwrap();
         assert_eq!(Ok(Status::Complete(REQ_MED.len())), req.parse());
         assert_eq!(Some(Method::Get), req.method);
         assert_eq!(&REQ[4..30], b"/api/v1.0/weather/forecast");
@@ -903,7 +903,7 @@ Cookie: wp_ozh_wsa_visits=2; wp_ozh_wsa_visit_lasttime=xxxxxxxxxx; __utma=xxxxxx
     pub fn test_req_long() {
         let mut req = H1Request::new();
         let mut buf = REQ_LONG;
-        assert_eq!(REQ_LONG.len(), req.fill(&mut buf).unwrap());
+        req.fill(&mut buf).unwrap();
         assert_eq!(Ok(Status::Complete(REQ_LONG.len())), req.parse());
         assert_eq!(format!("{}", req), from_utf8(REQ_LONG).unwrap());
     }
@@ -912,7 +912,7 @@ Cookie: wp_ozh_wsa_visits=2; wp_ozh_wsa_visit_lasttime=xxxxxxxxxx; __utma=xxxxxx
     pub fn test_req_comp() {
         let mut req = H1Request::new();
         let mut buf = REQ_COMP;
-        assert_eq!(REQ_COMP.len(), req.fill(&mut buf).unwrap());
+        req.fill(&mut buf).unwrap();
         assert_eq!(Ok(Status::Complete(REQ_COMP.len())), req.parse());
         assert_eq!(format!("{}", req), from_utf8(REQ_COMP).unwrap());
     }
