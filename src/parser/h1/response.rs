@@ -3,7 +3,7 @@
 use std::io::Write;
 
 use crate::{
-    buffer::Buffer,
+    first::buffer::Buffer,
     parser::{status::Status, Version},
 };
 
@@ -14,7 +14,7 @@ use super::request::Header;
 pub struct Response {
     version: Version,
     status: Status,
-    headers: Option<Vec<Header<'static>>>,
+    headers: Option<Vec<Header>>,
     body: String,
 }
 
@@ -30,9 +30,18 @@ impl Response {
     }
 
     /// TODO
+    pub fn get_serialized(&self) -> String {
+        format!("{} {}\r\n\r\n", self.version, self.status)
+    }
+
+    /// TODO
     pub fn write_to_buf(&self, buf: &mut Buffer) -> std::io::Result<usize> {
         let pos = buf.write_pos();
-        write!(buf, "{} {}\r\n\r\n", self.version, self.status)?;
+        write!(
+            buf,
+            "{} {}\r\nServer: rask/0.0.1\r\nConnection: keep-alive\r\n\r\n",
+            self.version, self.status
+        )?;
         Ok(buf.write_pos() - pos)
     }
 }

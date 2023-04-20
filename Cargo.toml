@@ -2,7 +2,6 @@
 name = "rask"
 version = "0.0.1"
 edition = "2021"
-rust-version = "1.57.0"
 description = "Low-level HTTP for learning purposes"
 homepage = "https://github.com/ryanseipp/rask"
 repository = "https://github.com/ryanseipp/rask"
@@ -11,14 +10,16 @@ keywords = ["HTTP", "Server", "Proxy", "H2", "H3"]
 categories = ["web-programming::http-server"]
 
 [dependencies]
+crossbeam-channel = "0.5.7"
 mio = { version = "0.8", features = ["os-poll", "net"] }
+rustls = "0.20.8"
 slab = "0.4"
 
-[[example]]
-name = "example"
-
-[[example]]
-name = "example_client"
+# [[example]]
+# name = "example"
+#
+# [[example]]
+# name = "example_client"
 
 [[bench]]
 name = "parser"

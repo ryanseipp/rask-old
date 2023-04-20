@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! First implementation of session buffer
+
 use std::{
     alloc::{self, Layout},
     borrow::{Borrow, BorrowMut},
@@ -44,7 +46,10 @@ impl Buffer {
             _marker: PhantomData,
         };
 
-        result.grow();
+        if desired_capacity > 0 {
+            result.desired_capcity = 2;
+            result.grow();
+        }
         result
     }
 

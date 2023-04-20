@@ -7,19 +7,19 @@ Host: www.example.org\r\n\r\n";
 
 const REQ_MED: &[u8] = b"\
 GET /api/v1.0/weather/forecast HTTP/1.1\r\n\
-Accept:*/*\r\n\
-Accept-Encoding:gzip,deflate,br\r\n\
-Accept-Language:en-US,en;q=0.5\r\n\
-Cache-Control:no-cache\r\n\
-Connection:keep-alive\r\n\
-DNT:1\r\n\
+Accept: */*\r\n\
+Accept-Encoding: gzip,deflate,br\r\n\
+Accept-Language: en-US,en;q=0.5\r\n\
+Cache-Control: no-cache\r\n\
+Connection: keep-alive\r\n\
+DNT: 1\r\n\
 Host: www.example.org\r\n\
-Pragma:no-cache\r\n\
-Referrer:https://www.example.org\r\n\
-Sec-Fetch-Dest:empty\r\n\
-Sec-Fetch-Mode:cors\r\n\
-Sec-Fetch-Site:same-origin\r\n\
-User-Agent:Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0\r\n\r\n";
+Pragma: no-cache\r\n\
+Referrer: https://www.example.org\r\n\
+Sec-Fetch-Dest: empty\r\n\
+Sec-Fetch-Mode: cors\r\n\
+Sec-Fetch-Site: same-origin\r\n\
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0\r\n\r\n";
 
 const REQ_LONG: &[u8] = b"POST /log?format=json&hasfast=true HTTP/1.1\r\n\
 Host: play.google.com\r\n\
@@ -64,8 +64,10 @@ fn benchmark(c: &mut Criterion) {
             input,
             |b, i| {
                 b.iter(|| {
+                    let mut buf = i;
                     let mut req = H1Request::new();
-                    let _ = req.parse(i);
+                    req.fill(&mut buf).unwrap();
+                    let _ = req.parse();
                 })
             },
         );

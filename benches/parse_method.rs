@@ -1,7 +1,7 @@
 use std::str::from_utf8;
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use rask::parser::{raw_request::RawRequest, Method, ParseError, ParseResult};
+use rask::parser::{raw_request::RawRequest, Method, ParseError, ParseResult, Status};
 
 const METHODS: [[u8; 8]; 8] = [
     [b'G', b'E', b'T', 0, 0, 0, 0, 0],
@@ -45,48 +45,48 @@ fn parse_method(buf: &mut RawRequest<'_>) -> ParseResult<Method> {
     if eight & 0x0000_0000_00ff_ffff == u64::from_le_bytes([b'G', b'E', b'T', 0, 0, 0, 0, 0]) {
         buf.advance(3);
         buf.slice();
-        Ok(Method::Get)
+        Ok(Status::Complete(Method::Get))
     } else if eight & 0x0000_0000_00ff_ffff == u64::from_le_bytes([b'P', b'U', b'T', 0, 0, 0, 0, 0])
     {
         buf.advance(3);
         buf.slice();
-        Ok(Method::Put)
+        Ok(Status::Complete(Method::Put))
     } else if eight & 0x0000_0000_ffff_ffff
         == u64::from_le_bytes([b'P', b'O', b'S', b'T', 0, 0, 0, 0])
     {
         buf.advance(4);
         buf.slice();
-        Ok(Method::Post)
+        Ok(Status::Complete(Method::Post))
     } else if eight & 0x0000_0000_ffff_ffff
         == u64::from_le_bytes([b'H', b'E', b'A', b'D', 0, 0, 0, 0])
     {
         buf.advance(4);
         buf.slice();
-        Ok(Method::Head)
+        Ok(Status::Complete(Method::Head))
     } else if eight & 0x0000_00ff_ffff_ffff
         == u64::from_le_bytes([b'T', b'R', b'A', b'C', b'E', 0, 0, 0])
     {
         buf.advance(5);
         buf.slice();
-        Ok(Method::Trace)
+        Ok(Status::Complete(Method::Trace))
     } else if eight & 0x0000_ffff_ffff_ffff
         == u64::from_le_bytes([b'D', b'E', b'L', b'E', b'T', b'E', 0, 0])
     {
         buf.advance(6);
         buf.slice();
-        Ok(Method::Delete)
+        Ok(Status::Complete(Method::Delete))
     } else if eight & 0x00ff_ffff_ffff_ffff
         == u64::from_le_bytes([b'O', b'P', b'T', b'I', b'O', b'N', b'S', 0])
     {
         buf.advance(7);
         buf.slice();
-        Ok(Method::Options)
+        Ok(Status::Complete(Method::Options))
     } else if eight & 0x00ff_ffff_ffff_ffff
         == u64::from_le_bytes([b'C', b'O', b'N', b'N', b'E', b'C', b'T', 0])
     {
         buf.advance(7);
         buf.slice();
-        Ok(Method::Connect)
+        Ok(Status::Complete(Method::Connect))
     } else {
         Err(ParseError::Method)
     }

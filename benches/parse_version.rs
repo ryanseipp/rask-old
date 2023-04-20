@@ -1,7 +1,7 @@
 use std::str::from_utf8;
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use rask::parser::{raw_request::RawRequest, ParseError, ParseResult, Version};
+use rask::parser::{raw_request::RawRequest, ParseError, ParseResult, Status, Version};
 
 const METHODS: [[u8; 8]; 4] = [
     [b'H', b'T', b'T', b'P', b'/', b'1', b'.', b'1'],
@@ -42,23 +42,23 @@ fn parse_version(buf: &mut RawRequest<'_>) -> ParseResult<Version> {
     if eight == u64::from_le_bytes([b'H', b'T', b'T', b'P', b'/', b'1', b'.', b'1']) {
         buf.advance(8);
         buf.slice();
-        Ok(Version::H1_1)
+        Ok(Status::Complete(Version::H1_1))
     } else if eight == u64::from_le_bytes([b'H', b'T', b'T', b'P', b'/', b'1', b'.', b'0']) {
         buf.advance(8);
         buf.slice();
-        Ok(Version::H1_0)
+        Ok(Status::Complete(Version::H1_0))
     } else if eight & SIX_BYTE_MASK
         == u64::from_le_bytes([b'H', b'T', b'T', b'P', b'/', b'2', 0, 0])
     {
         buf.advance(6);
         buf.slice();
-        Ok(Version::H2)
+        Ok(Status::Complete(Version::H2))
     } else if eight & SIX_BYTE_MASK
         == u64::from_le_bytes([b'H', b'T', b'T', b'P', b'/', b'3', 0, 0])
     {
         buf.advance(6);
         buf.slice();
-        Ok(Version::H3)
+        Ok(Status::Complete(Version::H3))
     } else {
         Err(ParseError::Version)
     }

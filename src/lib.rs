@@ -30,8 +30,27 @@
 //!
 //! Examples can be found in the `examples` directory of the source code, or [on GitHub].
 
-mod buffer;
+use std::{
+    io::{Read, Write},
+    sync::{Arc, Mutex},
+};
+
+use connection::Connection;
+use mio::event::Source;
+use net::tcp_stream::TcpStream;
+
+mod connection;
+pub mod first;
 pub mod listener;
+mod net;
 pub mod parser;
-pub mod sessions;
 pub mod worker;
+
+/// TODO
+#[derive(Debug)]
+pub struct Event<S: TcpStream + Read + Write + Source> {
+    /// TODO
+    pub connection: Arc<Mutex<Connection<S>>>,
+    /// TODO
+    pub event: mio::event::Event,
+}

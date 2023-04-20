@@ -70,5 +70,15 @@ impl Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
+/// Status of a parse operation. Determines if the operation completed, or reached the end of the
+/// buffer.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Status<T> {
+    /// The parse operation completed
+    Complete(T),
+    /// The parse operation encountered the end of the buffer
+    Partial,
+}
+
 /// Result whose Err variant is `ParseError`
-pub type ParseResult<T> = std::result::Result<T, ParseError>;
+pub type ParseResult<T> = std::result::Result<Status<T>, ParseError>;

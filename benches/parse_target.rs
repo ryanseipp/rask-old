@@ -4,7 +4,7 @@ use criterion::{
     black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput::Bytes,
 };
 use rask::parser::{
-    h1::tokens::is_request_target_token, raw_request::RawRequest, ParseError, ParseResult,
+    h1::tokens::is_request_target_token, raw_request::RawRequest, ParseError, ParseResult, Status,
 };
 
 const TARGETS: [&[u8]; 4] = [
@@ -128,9 +128,9 @@ fn parse_target_vector<'b>(buf: &mut RawRequest<'b>) -> ParseResult<&'b str> {
     loop {
         let b = buf.next().ok_or(ParseError::Target)?;
         if !is_request_target_token(*b) {
-            return Ok(unsafe {
+            return Ok(Status::Complete(unsafe {
                 from_utf8_unchecked(buf.slice_skip(1).map_err(|_| ParseError::Target)?)
-            });
+            }));
         }
     }
 }
@@ -140,9 +140,9 @@ fn parse_target_scalar<'b>(buf: &mut RawRequest<'b>) -> ParseResult<&'b str> {
     loop {
         let b = buf.next().ok_or(ParseError::Target)?;
         if !is_request_target_token(*b) {
-            return Ok(unsafe {
+            return Ok(Status::Complete(unsafe {
                 from_utf8_unchecked(buf.slice_skip(1).map_err(|_| ParseError::Target)?)
-            });
+            }));
         }
     }
 }

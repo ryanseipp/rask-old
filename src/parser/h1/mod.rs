@@ -14,7 +14,7 @@
 
 //! H1 parser implementation
 
-use super::{raw_request::RawRequest, ParseError, ParseResult};
+use super::{ParseError, ParseResult, Status};
 
 pub mod request;
 pub mod response;
@@ -26,14 +26,17 @@ pub mod tokens;
 /// OWS = *( SP / HTAB )
 /// ```
 #[inline]
-pub fn discard_whitespace(buf: &mut RawRequest<'_>) {
-    buf.take_until(|b| b != b' ' && b != b'\t');
-}
+pub fn discard_whitespace(buf: &[u8], pos: usize) -> Option<usize> {
+    let mut pos = pos;
+    for &byte in &buf[pos..] {
+        if byte != b' ' && byte != b'\t' {
+            return Some(pos);
+        }
 
-/// TODO
-#[inline]
-pub fn skip_whitespace(buf: &mut RawRequest<'_>) {
-    buf.find(|&&b| b != b' ' && b != b'\t');
+        pos += 1;
+    }
+
+    None
 }
 
 /// Consumes whitespace characters from `buf`. Requires that at least one whitespace character is
@@ -43,38 +46,52 @@ pub fn skip_whitespace(buf: &mut RawRequest<'_>) {
 /// RWS = 1*( SP / HTAB )
 /// ```
 #[inline]
-pub fn discard_required_whitespace(buf: &mut RawRequest<'_>) -> ParseResult<()> {
-    let pos = buf.pos();
-
-    buf.take_until(|b| b != b' ' && b != b'\t');
-    if pos == buf.pos() {
-        return Err(ParseError::Whitespace);
+pub fn discard_required_whitespace(
+    buf: &[u8],
+    pos: usize,
+    err_type: ParseError,
+) -> ParseResult<usize> {
+    let mut pos = pos;
+    if buf[pos] != b' ' && buf[pos] != b'\t' {
+        return Err(err_type);
     }
 
-    Ok(())
+    pos += 1;
+
+    for &byte in &buf[pos..] {
+        if byte != b' ' && byte != b'\t' {
+            return Ok(Status::Complete(pos));
+        }
+
+        pos += 1;
+    }
+
+    Ok(Status::Partial)
 }
 
-/// Consumes `buf` to the end of a new-line character sequence `b"\r\n"`
+/// Verifies the placement of a required newline sequence of bytes.
+/// Returns the position after the newline sequence.
+/// Takes a ParseError to be returned should the newline sequence not be found.
+///
+/// ```rust
+/// # use rask::parser::{Status, ParseError};
+/// # use rask::parser::h1::discard_required_newline;
+/// let buf: &[u8] = b"Hello\r\nWorld!";
+/// assert_eq!(Ok(Status::Complete(7)), discard_required_newline(buf, 5, ParseError::NewLine))
+/// ```
 #[inline]
-pub fn discard_newline(buf: &mut RawRequest<'_>) {
-    loop {
-        buf.take_until(|b| b == b'\r');
-        buf.next();
-        if buf.next() == Some(&b'\n') {
-            buf.slice();
-            return;
-        }
+pub fn discard_required_newline(
+    buf: &[u8],
+    pos: usize,
+    err_type: ParseError,
+) -> ParseResult<usize> {
+    if buf.len() - pos < 2 {
+        return Ok(Status::Partial);
     }
-}
 
-/// TODO
-#[inline]
-pub fn skip_newline(buf: &mut RawRequest<'_>) {
-    loop {
-        buf.find(|&&b| b == b'\r');
-        if buf.next() == Some(&b'\n') {
-            println!("{}", buf.pos());
-            return;
-        }
+    if &buf[pos..pos + 2] != b"\r\n" {
+        return Err(err_type);
     }
+
+    Ok(Status::Complete(pos + 2))
 }
