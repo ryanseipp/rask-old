@@ -6,6 +6,7 @@ use std::{
 use crossbeam_channel::unbounded;
 use mio::net::TcpListener;
 use rask::{
+    connection::PlainConnection,
     listener::{Listener, ListenerConfig},
     worker::Worker,
 };
@@ -21,7 +22,7 @@ fn main() -> Result<()> {
     let (c_tx, c_rx) = unbounded();
 
     let tcp_listener = TcpListener::bind("127.0.0.1:8080".parse().unwrap()).unwrap();
-    let mut listener = Listener::new(tcp_listener, tx, c_rx, config);
+    let mut listener = Listener::<_, _, PlainConnection<_>>::new(tcp_listener, tx, c_rx, config);
 
     let mut workers = Vec::default();
     for _ in 0..(available_parallelism().unwrap().get() - 1) {

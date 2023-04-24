@@ -17,6 +17,7 @@
 use std::fmt::Display;
 
 pub mod h1;
+pub mod h2;
 pub mod method;
 pub mod raw_request;
 pub mod status;

@@ -125,44 +125,6 @@ impl H1Request {
                 },
             }
         }
-
-        // TODO: This doesn't work, as we can only read into an _initialized_ region owned by the
-        // vec.
-        // println!("filling");
-        // let mut read: usize = 0;
-        // loop {
-        //     if self.data.capacity() - self.data.len() < 4096 {
-        //         let len = self.data.len().saturating_sub(1);
-        //         self.data.resize(len + 4096, 0);
-        //     }
-        //
-        //     let pos = self.data.len().saturating_sub(1);
-        //     match reader.read(&mut self.data[pos..]) {
-        //         Ok(0) => {
-        //             println!("read 0");
-        //             return Ok(read);
-        //         }
-        //         Ok(n) => {
-        //             println!("read {}", n);
-        //             read += n;
-        //         }
-        //         Err(e) => {
-        //             println!("err {:?}", e);
-        //             match e.kind() {
-        //                 ErrorKind::WouldBlock => {
-        //                     if read == 0 {
-        //                         return Err(e);
-        //                     } else {
-        //                         println!("read total {}", read);
-        //                         return Ok(read);
-        //                     }
-        //                 }
-        //                 ErrorKind::Interrupted => {}
-        //                 _ => return Err(e),
-        //             }
-        //         }
-        //     }
-        // }
     }
 
     /// Fills the request buffer with exactly N bytes

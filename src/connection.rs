@@ -1,4 +1,6 @@
+//! TODO
 use std::{
+    fmt::Debug,
     io::{self, ErrorKind, Read, Result, Write},
     sync::Arc,
 };
@@ -13,152 +15,123 @@ use crate::parser::{
 
 use super::net::tcp_stream::TcpStream;
 
+/// TODO
 #[derive(Debug)]
 pub enum ConnectionType<S>
 where
     S: TcpStream + Read + Write + Source,
 {
+    /// TODO
     Plain(PlainConnection<S>),
+    /// TODO
     Tls(TlsConnection<S>),
 }
 
+/// TODO
 #[derive(Debug)]
 pub enum ConnectionVersion {
+    /// TODO
     Http11(H1Request),
+    /// TODO
     H2,
+    /// TODO
     H3,
 }
 
-#[derive(Debug)]
-pub struct Connection<S>
-where
-    S: TcpStream + Read + Write + Source,
-{
-    inner: ConnectionType<S>,
+/// TODO
+pub trait Connection {
+    /// TODO
+    fn read(&mut self) -> Result<()>;
+    /// TODO
+    fn write(&mut self) -> Result<usize>;
+    /// TODO
+    fn parse(&mut self) -> ParseResult<usize>;
+    /// TODO
+    fn prepare_response(&mut self, response: Response);
+    /// TODO
+    fn is_closed(&self) -> bool;
+    /// TODO
+    fn token(&self) -> Token;
+    /// TODO
+    fn register(&mut self, registry: &Registry) -> Result<()>;
+    /// TODO
+    fn reregister(&mut self, registry: &Registry) -> Result<()>;
+    /// TODO
+    fn deregister(&mut self, registry: &Registry) -> Result<()>;
 }
 
-impl<S> Connection<S>
+/// TODO
+#[derive(Debug)]
+pub struct ConnectionBuilder<S> {
+    stream: S,
+    token: Token,
+}
+
+impl<S> ConnectionBuilder<S>
 where
     S: TcpStream + Read + Write + Source,
 {
-    pub fn new(
-        token: Token,
-        stream: S,
-        config: Option<Arc<ServerConfig>>,
-        registry: &Registry,
-    ) -> Result<Self> {
-        if let Some(config) = config {
-            let tls = ServerConnection::new(config).expect("Invalid TLS configuration");
-            let mut c = TlsConnection::new(token, stream, tls);
-            c.register(registry)?;
+    /// TODO
+    pub fn new(stream: S, token: Token) -> Self {
+        Self { stream, token }
+    }
 
-            Ok(Connection {
-                inner: ConnectionType::Tls(c),
-            })
-        } else {
-            let mut c = PlainConnection::new(token, stream);
-            c.register(registry)?;
-            Ok(Connection {
-                inner: ConnectionType::Plain(c),
-            })
+    /// TODO
+    pub fn with_plaintext(self) -> PlaintextConnectionBuilder<S> {
+        PlaintextConnectionBuilder::new(self.stream, self.token)
+    }
+
+    /// TODO
+    pub fn with_tls(self, config: Arc<ServerConfig>) -> TlsConnectionBuilder<S> {
+        TlsConnectionBuilder::new(self.stream, self.token, config)
+    }
+}
+
+/// TODO
+#[derive(Debug)]
+pub struct PlaintextConnectionBuilder<S> {
+    stream: S,
+    token: Token,
+}
+
+impl<S> PlaintextConnectionBuilder<S>
+where
+    S: TcpStream + Read + Write + Source,
+{
+    fn new(stream: S, token: Token) -> Self {
+        PlaintextConnectionBuilder { stream, token }
+    }
+
+    /// TODO
+    pub fn build(self) -> PlainConnection<S> {
+        PlainConnection::new(self.token, self.stream)
+    }
+}
+
+/// TODO
+#[derive(Debug)]
+pub struct TlsConnectionBuilder<S> {
+    stream: S,
+    token: Token,
+    config: Arc<ServerConfig>,
+}
+
+impl<S> TlsConnectionBuilder<S>
+where
+    S: TcpStream + Read + Write + Source,
+{
+    fn new(stream: S, token: Token, config: Arc<ServerConfig>) -> Self {
+        TlsConnectionBuilder {
+            stream,
+            token,
+            config,
         }
     }
 
-    #[inline]
-    pub fn read(&mut self) -> Result<()> {
-        match &mut self.inner {
-            ConnectionType::Tls(c) => c.read(),
-            ConnectionType::Plain(c) => c.read(),
-        }
-    }
-
-    #[inline]
-    pub fn prepare_response(&mut self, response: Response) {
-        match &mut self.inner {
-            ConnectionType::Tls(c) => c.prepare_response(response),
-            ConnectionType::Plain(c) => c.prepare_response(response),
-        }
-    }
-
-    #[inline]
-    pub fn write(&mut self) -> Result<usize> {
-        match &mut self.inner {
-            ConnectionType::Tls(c) => c.write(),
-            ConnectionType::Plain(c) => c.write(),
-        }
-    }
-
-    #[inline]
-    pub fn parse(&mut self) -> ParseResult<usize> {
-        let state = match &mut self.inner {
-            ConnectionType::Tls(ref mut c) => &mut c.state,
-            ConnectionType::Plain(ref mut c) => &mut c.state,
-        };
-
-        if let Some(ref mut state) = state {
-            match state {
-                ConnectionVersion::Http11(ref mut request) => request.parse(),
-                ConnectionVersion::H2 => Ok(Status::Partial),
-                ConnectionVersion::H3 => Ok(Status::Partial),
-            }
-        } else {
-            Err(ParseError::Method)
-        }
-    }
-
-    #[inline]
-    pub fn request(&self) -> Option<&H1Request> {
-        let state = match &self.inner {
-            ConnectionType::Tls(ref c) => &c.state,
-            ConnectionType::Plain(ref c) => &c.state,
-        };
-
-        if let Some(ConnectionVersion::Http11(h1_request)) = state {
-            return Some(h1_request);
-        }
-
-        None
-    }
-
-    #[inline]
-    pub fn is_closed(&self) -> bool {
-        match &self.inner {
-            ConnectionType::Tls(c) => c.closed,
-            ConnectionType::Plain(c) => c.closed,
-        }
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn token(&self) -> Token {
-        match &self.inner {
-            ConnectionType::Tls(c) => c.token,
-            ConnectionType::Plain(c) => c.token,
-        }
-    }
-
-    #[inline]
-    pub fn register(&mut self, registry: &Registry) -> Result<()> {
-        match &mut self.inner {
-            ConnectionType::Tls(ref mut c) => c.register(registry),
-            ConnectionType::Plain(ref mut c) => c.register(registry),
-        }
-    }
-
-    #[inline]
-    pub fn reregister(&mut self, registry: &Registry) -> Result<()> {
-        match &mut self.inner {
-            ConnectionType::Tls(ref mut c) => c.reregister(registry),
-            ConnectionType::Plain(ref mut c) => c.reregister(registry),
-        }
-    }
-
-    #[inline]
-    pub fn deregister(&mut self, registry: &Registry) -> Result<()> {
-        match &mut self.inner {
-            ConnectionType::Tls(ref mut c) => c.deregister(registry),
-            ConnectionType::Plain(ref mut c) => c.deregister(registry),
-        }
+    /// TODO
+    pub fn build(self) -> std::result::Result<TlsConnection<S>, rustls::Error> {
+        let tls = ServerConnection::new(self.config)?;
+        Ok(TlsConnection::new(self.token, self.stream, tls))
     }
 }
 
@@ -172,6 +145,7 @@ where
     token: Token,
     closed: bool,
     responses: Vec<Response>,
+    /// TODO
     pub state: Option<ConnectionVersion>,
 }
 
@@ -179,6 +153,7 @@ impl<S> PlainConnection<S>
 where
     S: TcpStream + Read + Write + Source,
 {
+    /// TODO
     pub fn new(token: Token, stream: S) -> Self {
         Self {
             stream,
@@ -190,7 +165,21 @@ where
     }
 
     #[inline]
-    pub fn read(&mut self) -> Result<()> {
+    fn event_set(&self) -> Interest {
+        if !self.responses.is_empty() {
+            Interest::READABLE | Interest::WRITABLE
+        } else {
+            Interest::READABLE
+        }
+    }
+}
+
+impl<S> Connection for PlainConnection<S>
+where
+    S: TcpStream + Read + Write + Source,
+{
+    #[inline]
+    fn read(&mut self) -> Result<()> {
         let mut done = false;
 
         if self.state.is_none() {
@@ -221,13 +210,7 @@ where
     }
 
     #[inline]
-    pub fn prepare_response(&mut self, response: Response) {
-        self.responses.push(response);
-        self.state = None;
-    }
-
-    #[inline]
-    pub fn write(&mut self) -> io::Result<usize> {
+    fn write(&mut self) -> io::Result<usize> {
         let mut total = 0;
         for response in self.responses.drain(..) {
             let write_buf = response.get_serialized();
@@ -239,30 +222,47 @@ where
         Ok(total)
     }
 
+    fn parse(&mut self) -> ParseResult<usize> {
+        if let Some(ref mut state) = self.state {
+            match state {
+                ConnectionVersion::Http11(ref mut request) => request.parse(),
+                ConnectionVersion::H2 => Ok(Status::Partial),
+                ConnectionVersion::H3 => Ok(Status::Partial),
+            }
+        } else {
+            Err(ParseError::Method)
+        }
+    }
+
     #[inline]
-    pub fn register(&mut self, registry: &Registry) -> Result<()> {
+    fn prepare_response(&mut self, response: Response) {
+        self.responses.push(response);
+        self.state = None;
+    }
+
+    fn is_closed(&self) -> bool {
+        self.closed
+    }
+
+    #[inline]
+    fn register(&mut self, registry: &Registry) -> Result<()> {
         let interest = self.event_set();
         registry.register(&mut self.stream, self.token, interest)
     }
 
     #[inline]
-    pub fn reregister(&mut self, registry: &Registry) -> Result<()> {
+    fn reregister(&mut self, registry: &Registry) -> Result<()> {
         let interest = self.event_set();
         registry.reregister(&mut self.stream, self.token, interest)
     }
 
     #[inline]
-    pub fn deregister(&mut self, registry: &Registry) -> Result<()> {
+    fn deregister(&mut self, registry: &Registry) -> Result<()> {
         registry.deregister(&mut self.stream)
     }
 
-    #[inline]
-    fn event_set(&self) -> Interest {
-        if !self.responses.is_empty() {
-            Interest::READABLE | Interest::WRITABLE
-        } else {
-            Interest::READABLE
-        }
+    fn token(&self) -> Token {
+        self.token
     }
 }
 
@@ -276,6 +276,7 @@ where
     tls: Box<ServerConnection>,
     token: Token,
     closed: bool,
+    /// TODO
     pub state: Option<ConnectionVersion>,
 }
 
@@ -283,6 +284,7 @@ impl<S> TlsConnection<S>
 where
     S: TcpStream + Read + Write + Source,
 {
+    /// TODO
     pub fn new(token: Token, stream: S, tls: ServerConnection) -> Self {
         Self {
             stream,
@@ -291,36 +293,6 @@ where
             closed: false,
             state: None,
         }
-    }
-
-    #[inline]
-    pub fn read(&mut self) -> Result<()> {
-        if self.state.is_none() {
-            if let Some(protos) = self.tls.alpn_protocol() {
-                if protos.windows(2).any(|w| w == b"h2") {
-                    self.state = Some(ConnectionVersion::H2);
-                }
-            }
-
-            if self.state.is_none() {
-                self.state = Some(ConnectionVersion::Http11(H1Request::default()));
-            }
-        }
-
-        let mut done = self.read_tls()? == 0;
-
-        if !done {
-            match self.tls.process_new_packets() {
-                Ok(tls_state) => self.read_plaintext(tls_state)?,
-                Err(_) => done = true,
-            }
-        }
-
-        if done {
-            self.closed = true;
-        }
-
-        Ok(())
     }
 
     #[inline]
@@ -362,37 +334,6 @@ where
     }
 
     #[inline]
-    pub fn prepare_response(&mut self, response: Response) {
-        self.tls
-            .writer()
-            .write_all(response.get_serialized().as_bytes())
-            .unwrap();
-    }
-
-    #[inline]
-    pub fn write(&mut self) -> io::Result<usize> {
-        // TODO: this may be supressing errors
-        self.tls.write_tls(&mut self.stream)
-    }
-
-    #[inline]
-    pub fn register(&mut self, registry: &Registry) -> Result<()> {
-        let interest = self.event_set();
-        registry.register(&mut self.stream, self.token, interest)
-    }
-
-    #[inline]
-    pub fn reregister(&mut self, registry: &Registry) -> Result<()> {
-        let interest = self.event_set();
-        registry.reregister(&mut self.stream, self.token, interest)
-    }
-
-    #[inline]
-    pub fn deregister(&mut self, registry: &Registry) -> Result<()> {
-        registry.deregister(&mut self.stream)
-    }
-
-    #[inline]
     fn event_set(&self) -> Interest {
         let read = self.tls.wants_read();
         let write = self.tls.wants_write();
@@ -404,5 +345,91 @@ where
         } else {
             Interest::READABLE
         }
+    }
+}
+
+impl<S> Connection for TlsConnection<S>
+where
+    S: TcpStream + Read + Write + Source,
+{
+    #[inline]
+    fn read(&mut self) -> Result<()> {
+        if self.state.is_none() {
+            if let Some(protos) = self.tls.alpn_protocol() {
+                if protos.windows(2).any(|w| w == b"h2") {
+                    self.state = Some(ConnectionVersion::H2);
+                }
+            }
+
+            if self.state.is_none() {
+                self.state = Some(ConnectionVersion::Http11(H1Request::default()));
+            }
+        }
+
+        let mut done = self.read_tls()? == 0;
+
+        if !done {
+            match self.tls.process_new_packets() {
+                Ok(tls_state) => self.read_plaintext(tls_state)?,
+                Err(_) => done = true,
+            }
+        }
+
+        if done {
+            self.closed = true;
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    fn write(&mut self) -> io::Result<usize> {
+        // TODO: this may be supressing errors
+        self.tls.write_tls(&mut self.stream)
+    }
+
+    fn parse(&mut self) -> ParseResult<usize> {
+        if let Some(ref mut state) = self.state {
+            match state {
+                ConnectionVersion::Http11(ref mut request) => request.parse(),
+                ConnectionVersion::H2 => Ok(Status::Partial),
+                ConnectionVersion::H3 => Ok(Status::Partial),
+            }
+        } else {
+            Err(ParseError::Method)
+        }
+    }
+
+    #[inline]
+    fn prepare_response(&mut self, response: Response) {
+        self.tls
+            .writer()
+            .write_all(response.get_serialized().as_bytes())
+            .unwrap();
+    }
+
+    fn is_closed(&self) -> bool {
+        self.closed
+    }
+
+    #[inline]
+    fn register(&mut self, registry: &Registry) -> Result<()> {
+        let interest = self.event_set();
+        registry.register(&mut self.stream, self.token, interest)
+    }
+
+    #[inline]
+    fn reregister(&mut self, registry: &Registry) -> Result<()> {
+        let interest = self.event_set();
+        registry.reregister(&mut self.stream, self.token, interest)
+    }
+
+    #[inline]
+    fn deregister(&mut self, registry: &Registry) -> Result<()> {
+        registry.deregister(&mut self.stream)
+    }
+
+    fn token(&self) -> Token {
+        self.token
     }
 }

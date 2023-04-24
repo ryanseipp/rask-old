@@ -59,38 +59,32 @@
 //  * fine-grained mutexes if overhead is low and work-stealing streams is feasible
 // ------------------------------------------------------------------------------------------------
 
-use std::{
-    io::{Read, Write},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use crossbeam_channel::{Receiver, Sender};
-use mio::{event::Source, Token, Waker};
+use mio::{Token, Waker};
 
 use crate::{
-    net::tcp_stream::TcpStream,
+    connection::Connection,
     parser::{h1::response::Response, status::Status, Version},
     Event,
 };
 
 /// Worker that recieves connections on a channel and drives the request towards completion.
 #[derive(Debug)]
-pub struct Worker<S>
-where
-    S: TcpStream + Read + Write + Source,
-{
-    connections: Receiver<Event<S>>,
+pub struct Worker<C> {
+    connections: Receiver<Event<C>>,
     inform_listener: Sender<Token>,
     listener_waker: Arc<Waker>,
 }
 
-impl<S> Worker<S>
+impl<C> Worker<C>
 where
-    S: TcpStream + Read + Write + Source,
+    C: Connection,
 {
     /// TODO
     pub fn new(
-        receiver: Receiver<Event<S>>,
+        receiver: Receiver<Event<C>>,
         sender: Sender<Token>,
         listener_waker: Arc<Waker>,
     ) -> Self {
