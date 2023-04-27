@@ -30,8 +30,8 @@ impl Response {
     }
 
     /// TODO
-    pub fn get_serialized(&self) -> String {
-        format!("{} {}\r\n\r\n", self.version, self.status)
+    pub fn get_serialized(&self) -> &str {
+        "HTTP/1.1 204\r\nServer: rask/0.0.1\r\nConnection: keep-alive\r\n\r\n"
     }
 
     /// TODO
@@ -39,8 +39,7 @@ impl Response {
         let pos = buf.write_pos();
         write!(
             buf,
-            "{} {}\r\nServer: rask/0.0.1\r\nConnection: keep-alive\r\n\r\n",
-            self.version, self.status
+            "HTTP/1.1 204\r\nServer: rask/0.0.1\r\nConnection: keep-alive\r\n\r\n",
         )?;
         Ok(buf.write_pos() - pos)
     }

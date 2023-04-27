@@ -31,7 +31,7 @@ where
 #[derive(Debug)]
 pub enum ConnectionVersion {
     /// TODO
-    Http11(H1Request),
+    Http11(Option<H1Request>),
     /// TODO
     H2,
     /// TODO
@@ -54,8 +54,6 @@ pub trait Connection {
     fn token(&self) -> Token;
     /// TODO
     fn register(&mut self, registry: &Registry) -> Result<()>;
-    /// TODO
-    fn reregister(&mut self, registry: &Registry) -> Result<()>;
     /// TODO
     fn deregister(&mut self, registry: &Registry) -> Result<()>;
 }
@@ -163,15 +161,6 @@ where
             state: None,
         }
     }
-
-    #[inline]
-    fn event_set(&self) -> Interest {
-        if !self.responses.is_empty() {
-            Interest::READABLE | Interest::WRITABLE
-        } else {
-            Interest::READABLE
-        }
-    }
 }
 
 impl<S> Connection for PlainConnection<S>
@@ -190,13 +179,21 @@ where
             {
                 Some(ConnectionVersion::H2)
             } else {
-                Some(ConnectionVersion::Http11(H1Request::default()))
+                Some(ConnectionVersion::Http11(Some(H1Request::default())))
             };
         }
 
         if let Some(ref mut state) = self.state {
             done = match state {
-                ConnectionVersion::Http11(ref mut request) => request.fill(&mut self.stream)? == 0,
+                ConnectionVersion::Http11(Some(ref mut request)) => {
+                    request.fill(&mut self.stream)? == 0
+                }
+                ConnectionVersion::Http11(None) => {
+                    let mut request = H1Request::default();
+                    let done = request.fill(&mut self.stream)? == 0;
+                    self.state = Some(ConnectionVersion::Http11(Some(request)));
+                    done
+                }
                 ConnectionVersion::H2 => true,
                 ConnectionVersion::H3 => true,
             }
@@ -212,12 +209,14 @@ where
     #[inline]
     fn write(&mut self) -> io::Result<usize> {
         let mut total = 0;
-        for response in self.responses.drain(..) {
+        for response in &self.responses {
             let write_buf = response.get_serialized();
             total += write_buf.as_bytes().len();
             self.stream.write_all(write_buf.as_bytes())?;
             self.stream.flush()?;
         }
+
+        self.responses.clear();
 
         Ok(total)
     }
@@ -225,7 +224,10 @@ where
     fn parse(&mut self) -> ParseResult<usize> {
         if let Some(ref mut state) = self.state {
             match state {
-                ConnectionVersion::Http11(ref mut request) => request.parse(),
+                ConnectionVersion::Http11(Some(ref mut request)) => request.parse(),
+                ConnectionVersion::Http11(None) => {
+                    panic!("Tried to parse on connection with no request")
+                }
                 ConnectionVersion::H2 => Ok(Status::Partial),
                 ConnectionVersion::H3 => Ok(Status::Partial),
             }
@@ -237,7 +239,12 @@ where
     #[inline]
     fn prepare_response(&mut self, response: Response) {
         self.responses.push(response);
-        self.state = None;
+        self.state = match self.state {
+            Some(ConnectionVersion::Http11(_)) => Some(ConnectionVersion::Http11(None)),
+            Some(ConnectionVersion::H2) => Some(ConnectionVersion::H2),
+            Some(ConnectionVersion::H3) => Some(ConnectionVersion::H3),
+            None => None,
+        };
     }
 
     fn is_closed(&self) -> bool {
@@ -246,14 +253,11 @@ where
 
     #[inline]
     fn register(&mut self, registry: &Registry) -> Result<()> {
-        let interest = self.event_set();
-        registry.register(&mut self.stream, self.token, interest)
-    }
-
-    #[inline]
-    fn reregister(&mut self, registry: &Registry) -> Result<()> {
-        let interest = self.event_set();
-        registry.reregister(&mut self.stream, self.token, interest)
+        registry.register(
+            &mut self.stream,
+            self.token,
+            Interest::READABLE.add(Interest::WRITABLE),
+        )
     }
 
     #[inline]
@@ -322,8 +326,11 @@ where
         if tls_state.plaintext_bytes_to_read() > 0 {
             if let Some(ref mut state) = self.state {
                 return match state {
-                    ConnectionVersion::Http11(ref mut request) => request
+                    ConnectionVersion::Http11(Some(ref mut request)) => request
                         .fill_exact(&mut self.tls.reader(), tls_state.plaintext_bytes_to_read()),
+                    ConnectionVersion::Http11(None) => {
+                        panic!("Tried to read on connection with no request")
+                    }
                     ConnectionVersion::H2 => Ok(()),
                     ConnectionVersion::H3 => Ok(()),
                 };
@@ -331,20 +338,6 @@ where
         }
 
         Ok(())
-    }
-
-    #[inline]
-    fn event_set(&self) -> Interest {
-        let read = self.tls.wants_read();
-        let write = self.tls.wants_write();
-
-        if read && write {
-            Interest::READABLE | Interest::WRITABLE
-        } else if write {
-            Interest::WRITABLE
-        } else {
-            Interest::READABLE
-        }
     }
 }
 
@@ -362,7 +355,7 @@ where
             }
 
             if self.state.is_none() {
-                self.state = Some(ConnectionVersion::Http11(H1Request::default()));
+                self.state = Some(ConnectionVersion::Http11(Some(H1Request::default())));
             }
         }
 
@@ -391,7 +384,10 @@ where
     fn parse(&mut self) -> ParseResult<usize> {
         if let Some(ref mut state) = self.state {
             match state {
-                ConnectionVersion::Http11(ref mut request) => request.parse(),
+                ConnectionVersion::Http11(Some(ref mut request)) => request.parse(),
+                ConnectionVersion::Http11(None) => {
+                    panic!("Tried to parse on connection with no request")
+                }
                 ConnectionVersion::H2 => Ok(Status::Partial),
                 ConnectionVersion::H3 => Ok(Status::Partial),
             }
@@ -414,14 +410,11 @@ where
 
     #[inline]
     fn register(&mut self, registry: &Registry) -> Result<()> {
-        let interest = self.event_set();
-        registry.register(&mut self.stream, self.token, interest)
-    }
-
-    #[inline]
-    fn reregister(&mut self, registry: &Registry) -> Result<()> {
-        let interest = self.event_set();
-        registry.reregister(&mut self.stream, self.token, interest)
+        registry.register(
+            &mut self.stream,
+            self.token,
+            Interest::READABLE.add(Interest::WRITABLE),
+        )
     }
 
     #[inline]

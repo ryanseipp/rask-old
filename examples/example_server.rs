@@ -1,7 +1,4 @@
-use std::{
-    io::Result,
-    thread::{self, available_parallelism},
-};
+use std::{io::Result, thread};
 
 use crossbeam_channel::unbounded;
 use mio::net::TcpListener;
@@ -25,7 +22,7 @@ fn main() -> Result<()> {
     let mut listener = Listener::<_, _, PlainConnection<_>>::new(tcp_listener, tx, c_rx, config);
 
     let mut workers = Vec::default();
-    for _ in 0..(available_parallelism().unwrap().get() - 1) {
+    for _ in 0..3 {
         let waker = listener.waker();
         let rx = rx.clone();
         let c_tx = c_tx.clone();

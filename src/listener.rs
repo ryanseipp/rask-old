@@ -66,9 +66,10 @@ where
                     let entry = self.connections.vacant_entry();
                     let token = Token(entry.key());
 
-                    let connection = ConnectionBuilder::new(stream, token)
+                    let mut connection = ConnectionBuilder::new(stream, token)
                         .with_plaintext()
                         .build();
+                    connection.register(self.poll.registry())?;
                     self.connections.insert(Arc::new(Mutex::new(connection)));
                 }
                 Err(ref err) if err.kind() == ErrorKind::WouldBlock => return Ok(()),
@@ -96,7 +97,7 @@ where
 
                             WAKE_TOKEN => loop {
                                 match self.closed_connections.try_recv() {
-                                    Ok(token) => self.event_complete(token),
+                                    Ok(token) => self.close_connection(token),
                                     Err(TryRecvError::Empty) => {
                                         break;
                                     }
@@ -172,7 +173,7 @@ where
 
                             WAKE_TOKEN => loop {
                                 match self.closed_connections.try_recv() {
-                                    Ok(token) => self.event_complete(token),
+                                    Ok(token) => self.close_connection(token),
                                     Err(TryRecvError::Empty) => {
                                         break;
                                     }
@@ -254,7 +255,7 @@ where
     }
 
     #[inline]
-    fn event_complete(&mut self, token: Token) {
+    fn close_connection(&mut self, token: Token) {
         let mut closed = false;
         if let Some(connection) = self.connections.get(token.0) {
             let mut locked = connection.lock().unwrap();
@@ -262,8 +263,6 @@ where
             if locked.is_closed() {
                 locked.deregister(self.poll.registry()).unwrap();
                 closed = true;
-            } else {
-                locked.reregister(self.poll.registry()).unwrap();
             }
         }
 

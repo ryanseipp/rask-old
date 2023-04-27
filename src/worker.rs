@@ -96,7 +96,7 @@ where
     }
 
     #[inline]
-    fn inform_listener(&mut self, token: Token) -> Result<(), ()> {
+    fn close_connection(&mut self, token: Token) -> Result<(), ()> {
         self.inform_listener.send(token).map_err(|_| ())?;
         self.listener_waker.wake().map_err(|_| ())
     }
@@ -113,7 +113,7 @@ where
                 // hmmmmmmmmmmm
                 Ok(c) => c,
                 Err(c) => {
-                    match self.inform_listener(c.get_ref().token()) {
+                    match self.close_connection(c.get_ref().token()) {
                         Ok(()) => continue,
                         Err(()) => return,
                     };
@@ -124,7 +124,7 @@ where
                 let read_result = locked_connection.read();
 
                 if read_result.is_err() || locked_connection.is_closed() {
-                    match self.inform_listener(locked_connection.token()) {
+                    match self.close_connection(locked_connection.token()) {
                         Ok(()) => continue,
                         Err(()) => return, // server is shutting down
                     }
@@ -141,10 +141,14 @@ where
                 locked_connection.write().unwrap();
             }
 
+            let closed = locked_connection.is_closed();
             drop(locked_connection);
-            match self.inform_listener(event.event.token()) {
-                Ok(()) => continue,
-                Err(()) => return,
+
+            if closed {
+                match self.close_connection(event.event.token()) {
+                    Ok(()) => continue,
+                    Err(()) => return,
+                }
             }
         }
     }
