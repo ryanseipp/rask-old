@@ -33,11 +33,9 @@
 use std::sync::{Arc, Mutex};
 
 pub mod connection;
-mod first;
 pub mod multilistener;
 mod net;
 pub mod parser;
-mod second;
 
 /// TODO
 #[derive(Debug)]

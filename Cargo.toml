@@ -10,7 +10,6 @@ keywords = ["HTTP", "Server", "Proxy", "H2", "H3"]
 categories = ["web-programming::http-server"]
 
 [dependencies]
-crossbeam-channel = "0.5.7"
 mio = { version = "0.8", features = ["os-poll", "net"] }
 rustls = { version = "0.21", features = ["quic"] }
 slab = "0.4"
