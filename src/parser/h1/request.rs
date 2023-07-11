@@ -20,7 +20,7 @@ use std::mem::MaybeUninit;
 use std::ops::Range;
 use std::str::from_utf8;
 
-use super::tokens::{is_header_name_token, is_header_value_token, is_request_target_token};
+use super::tokens::{is_header_name_token, is_header_value_token};
 use super::{
     discard_required_newline, discard_required_whitespace, discard_whitespace, ParseError,
     ParseResult,
@@ -58,21 +58,6 @@ pub struct H1Request {
     /// TODO
     pub headers: Option<&'static [Header]>,
 }
-
-// TODO: PROBABLE UNDEFINED BEHAVIOR WITH HEADERS!!!!!!!!!
-
-// impl Default for H1Request {
-//     fn default() -> Self {
-//         Self {
-//             data: Vec::new(),
-//             complete: false,
-//             method: None,
-//             target: None,
-//             version: None,
-//             headers: None,
-//         }
-//     }
-// }
 
 impl Display for H1Request {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -184,7 +169,7 @@ impl H1Request {
             Err(err) => return Err(err),
         }
 
-        match discard_required_whitespace(&self.data, pos, ParseError::Method) {
+        match discard_required_whitespace(&self.data, pos, ParseError::Target) {
             Ok(Status::Complete(n)) => pos = n,
             Ok(Status::Partial) => return Ok(Status::Partial),
             Err(err) => return Err(err),
@@ -380,34 +365,63 @@ fn parse_target_vectorized_ssse3(buf: &[u8], mut pos: usize) -> Result<usize, us
     Err(pos)
 }
 
+// #[inline]
+// fn parse_target(buf: &[u8], mut pos: usize) -> ParseResult<(usize, Range<usize>)> {
+//     let start = pos;
+//
+//     #[cfg(all(
+//         target_feature = "avx2",
+//         any(target_arch = "x86", target_arch = "x86_64")
+//     ))]
+//     match parse_target_vectorized_avx2(buf, pos) {
+//         Ok(n) => return Ok(Status::Complete((n, start..n))),
+//         Err(n) => pos = n,
+//     };
+//
+//     #[cfg(all(
+//         target_feature = "ssse3",
+//         any(target_arch = "x86", target_arch = "x86_64")
+//     ))]
+//     match parse_target_vectorized_ssse3(buf, pos) {
+//         Ok(n) => return Ok(Status::Complete((n, start..n))),
+//         Err(n) => pos = n,
+//     };
+//
+//     for &b in &buf[pos..] {
+//         if !is_request_target_token(b) {
+//             if pos == start {
+//                 return Err(ParseError::Target);
+//             }
+//
+//             return Ok(Status::Complete((pos, start..pos)));
+//         }
+//
+//         pos += 1;
+//     }
+//
+//     Ok(Status::Partial)
+// }
+
 #[inline]
 fn parse_target(buf: &[u8], mut pos: usize) -> ParseResult<(usize, Range<usize>)> {
     let start = pos;
 
-    #[cfg(all(
-        target_feature = "avx2",
-        any(target_arch = "x86", target_arch = "x86_64")
-    ))]
-    match parse_target_vectorized_avx2(buf, pos) {
-        Ok(n) => return Ok(Status::Complete((n, start..n))),
-        Err(n) => pos = n,
-    };
+    for window in buf[start..].chunks(64) {
+        let res = window.iter().enumerate().fold(0, |acc, (i, b)| {
+            (((*b == b'=' || (b'!'..=b';').contains(b) || (b'?'..=b'~').contains(b)) as u64) << i)
+                | acc
+        });
 
-    #[cfg(all(
-        target_feature = "ssse3",
-        any(target_arch = "x86", target_arch = "x86_64")
-    ))]
-    match parse_target_vectorized_ssse3(buf, pos) {
-        Ok(n) => return Ok(Status::Complete((n, start..n))),
-        Err(n) => pos = n,
-    };
+        let num_valid = res.trailing_ones();
+        pos += num_valid as usize;
 
-    for &b in &buf[pos..] {
-        if !is_request_target_token(b) {
+        if num_valid != 64 {
+            if pos == start {
+                return Err(ParseError::Target);
+            }
+
             return Ok(Status::Complete((pos, start..pos)));
         }
-
-        pos += 1;
     }
 
     Ok(Status::Partial)
@@ -757,11 +771,16 @@ fn parse_headers(
 
 #[cfg(test)]
 mod test {
-    use std::str::from_utf8;
+    use std::{path::PathBuf, str::from_utf8};
 
-    use crate::parser::{h1::request::Header, Method, Status, Version};
+    use fake::{faker::filesystem::en::FilePath, Fake};
 
-    use super::H1Request;
+    use crate::parser::{
+        h1::request::{parse_target, Header},
+        Method, Status, Version,
+    };
+
+    use super::{parse_method, H1Request};
 
     const REQ: &[u8] = b"\
 GET /api/v1.0/weather/forecast HTTP/1.1\r\n\
@@ -814,6 +833,17 @@ Accept-Charset: Shift_JIS,utf-8;q=0.7,*;q=0.7\r\n\
 Keep-Alive: 115\r\n\
 Connection: keep-alive\r\n\
 Cookie: wp_ozh_wsa_visits=2; wp_ozh_wsa_visit_lasttime=xxxxxxxxxx; __utma=xxxxxxxxx.xxxxxxxxxx.xxxxxxxxxx.xxxxxxxxxx.xxxxxxxxxx.x; __utmz=xxxxxxxxx.xxxxxxxxxx.x.x.utmccn=(referral)|utmcsr=reader.livedoor.com|utmcct=/reader/|utmcmd=referral|padding=under256\r\n\r\n";
+
+    #[test]
+    pub fn test_target() {
+        let result = parse_target(REQ, 4).unwrap();
+        let Status::Complete((pos, range)) = result else {
+            panic!("Result status is not complete");
+        };
+
+        assert_eq!(pos, 30);
+        assert_eq!(range, 4..30);
+    }
 
     #[test]
     pub fn test_req() {
@@ -894,5 +924,35 @@ Cookie: wp_ozh_wsa_visits=2; wp_ozh_wsa_visit_lasttime=xxxxxxxxxx; __utma=xxxxxx
             println!("{}\n{}", from_utf8(input).unwrap(), req);
             assert_eq!(from_utf8(input).unwrap(), format!("{}", req));
         }
+    }
+
+    #[test]
+    pub fn method_returns_ok_with_valid_http_verb() {
+        let verbs = [
+            ("GET     ", Method::Get),
+            ("PUT     ", Method::Put),
+            ("POST    ", Method::Post),
+            ("HEAD    ", Method::Head),
+            ("TRACE   ", Method::Trace),
+            ("DELETE  ", Method::Delete),
+            ("OPTIONS ", Method::Options),
+            ("CONNECT ", Method::Connect),
+        ];
+
+        for (verb, expected) in verbs {
+            let result = parse_method(verb.as_bytes());
+
+            assert_eq!(result, Ok(Status::Complete((verb.trim().len(), expected))));
+        }
+    }
+
+    #[test]
+    pub fn target_returns_ok_with_valid_path() {
+        let path: PathBuf = FilePath().fake();
+        let path = path.to_str().unwrap();
+
+        let result = parse_target(path.as_bytes(), 0);
+
+        assert_eq!(result, Ok(Status::Complete((path.len(), 0..path.len()))));
     }
 }

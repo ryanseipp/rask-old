@@ -189,7 +189,7 @@ where
             poll,
             connections: Slab::default(),
             configuration: config,
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 
@@ -197,7 +197,9 @@ where
     fn event(&mut self, event: &mio::event::Event) {
         let token = event.token();
 
-        let Some(ref mut connection) = self.connections.get_mut(token.0) else { return };
+        let Some(ref mut connection) = self.connections.get_mut(token.0) else {
+            return;
+        };
 
         if event.is_readable() {
             let read_result = connection.read();

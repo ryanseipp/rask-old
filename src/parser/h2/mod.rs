@@ -13,4 +13,6 @@ pub struct Frame {
     stream_id: u32,
 }
 
+// pub fn parse_frame(req: &[u8]) -> Frame {}
+
 struct Stream {}
