@@ -11,7 +11,7 @@ categories = ["web-programming::http-server"]
 
 [dependencies]
 mio = { version = "0.8", features = ["os-poll", "net"] }
-rustls = { version = "0.21", features = ["quic"] }
+rustls = { version = "0.22" }
 slab = "0.4"
 
 [dev-dependencies]
