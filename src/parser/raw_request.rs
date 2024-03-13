@@ -19,9 +19,9 @@ use core::slice;
 /// TODO
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
-    ///
+    /// Skip
     Skip,
-    ///
+    /// Take
     Take,
 }
 
@@ -77,7 +77,7 @@ impl<'a> RawRequest<'a> {
             .copied();
     }
 
-    ///
+    /// to_vec
     pub fn to_vec(&self) -> Vec<u8> {
         self.inner.to_vec()
     }

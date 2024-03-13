@@ -11,12 +11,12 @@ categories = ["web-programming::http-server"]
 
 [dependencies]
 mio = { version = "0.8", features = ["os-poll", "net"] }
-rustls = { version = "0.22" }
+rustls = { version = "0.23", default_features = false, features = ["ring", "std", "tls12", "log", "logging"] }
 slab = "0.4"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }
-fake = "2.6.1"
+fake = "2.9.2"
 
 # [[example]]
 # name = "example"

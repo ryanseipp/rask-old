@@ -1,5 +1,4 @@
 use std::io::{Error, Result};
-use std::marker::Sized;
 use std::net::{Shutdown, SocketAddr};
 
 pub trait TcpStream {
