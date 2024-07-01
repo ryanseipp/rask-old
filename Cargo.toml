@@ -10,7 +10,7 @@ keywords = ["HTTP", "Server", "Proxy", "H2", "H3"]
 categories = ["web-programming::http-server"]
 
 [dependencies]
-mio = { version = "0.8", features = ["os-poll", "net"] }
+mio = { version = "1.0", features = ["os-poll", "net"] }
 rustls = { version = "0.23", default_features = false, features = ["ring", "std", "tls12", "log", "logging"] }
 slab = "0.4"
 
