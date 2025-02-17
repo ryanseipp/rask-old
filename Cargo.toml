@@ -16,7 +16,7 @@ slab = "0.4"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }
-fake = "2.9.2"
+fake = "4.0.0"
 
 # [[example]]
 # name = "example"
